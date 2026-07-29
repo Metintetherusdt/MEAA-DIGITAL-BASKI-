@@ -1,0 +1,1447 @@
+import os
+import json
+import webbrowser
+from datetime import datetime
+
+from kivy.app import App
+from kivy.metrics import dp
+from kivy.core.window import Window
+from kivy.graphics import Color, RoundedRectangle
+
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.gridlayout import GridLayout
+from kivy.uix.scrollview import ScrollView
+from kivy.uix.label import Label
+from kivy.uix.button import Button
+from kivy.uix.image import Image
+from kivy.uix.textinput import TextInput
+from kivy.uix.popup import Popup
+from kivy.uix.spinner import Spinner
+
+
+# ==========================================================
+# MEAA DIGITAL BASKI
+# ÜRÜNLERİNİ BURADAN EKLE
+# ==========================================================
+
+PRODUCTS = [
+
+    {
+        "id": 1,
+        "name": "Kişiye Özel İsimli Anahtarlık",
+        "price": 149.90,
+        "category": "Kişiye Özel",
+        "image": "isimli_anahtarlik.png",
+        "description": "İsminize özel 3D baskı anahtarlık.",
+        "customizable": True
+    },
+
+    {
+        "id": 2,
+        "name": "Plaka Anahtarlık",
+        "price": 179.90,
+        "category": "Araç",
+        "image": "plaka.png",
+        "description": "Aracınızın plakasına özel 3D baskı anahtarlık.",
+        "customizable": True
+    },
+
+    {
+        "id": 3,
+        "name": "Kalp Anahtarlık",
+        "price": 129.90,
+        "category": "Hediyelik",
+        "image": "kalp.png",
+        "description": "Sevdiklerinize özel kalp tasarımlı anahtarlık.",
+        "customizable": False
+    },
+
+    {
+        "id": 4,
+        "name": "Araba Temalı Anahtarlık",
+        "price": 159.90,
+        "category": "Araç",
+        "image": "araba.png",
+        "description": "Araba tutkunları için özel tasarım.",
+        "customizable": True
+    }
+
+]
+
+
+# ==========================================================
+# AYARLAR
+# ==========================================================
+
+APP_NAME = "MEAA DIGITAL BASKI"
+
+# BURAYA KENDİ WHATSAPP NUMARANI YAZ
+WHATSAPP_NUMBER = "905555555555"
+
+ORDERS_FILE = "meaa_orders.json"
+
+
+# ==========================================================
+# RENKLER
+# ==========================================================
+
+BLACK = (0.03, 0.03, 0.04, 1)
+YELLOW = (1, 0.68, 0.02, 1)
+WHITE = (1, 1, 1, 1)
+LIGHT = (0.95, 0.95, 0.96, 1)
+GRAY = (0.45, 0.45, 0.48, 1)
+GREEN = (0.10, 0.65, 0.30, 1)
+RED = (0.85, 0.15, 0.15, 1)
+BLUE = (0.10, 0.30, 0.80, 1)
+
+
+# ==========================================================
+# ANA UYGULAMA
+# ==========================================================
+
+class MeaaDigitalBaski(App):
+
+    def build(self):
+
+        Window.clearcolor = LIGHT
+
+        self.products = PRODUCTS
+
+        self.cart = []
+
+        self.favorites = []
+
+        self.orders = self.load_orders()
+
+        self.category = "Tümü"
+
+        self.root = BoxLayout(
+            orientation="vertical"
+        )
+
+        self.home()
+
+        return self.root
+
+
+    # ======================================================
+    # SİPARİŞLERİ YÜKLE
+    # ======================================================
+
+    def load_orders(self):
+
+        if not os.path.exists(ORDERS_FILE):
+            return []
+
+        try:
+
+            with open(
+                ORDERS_FILE,
+                "r",
+                encoding="utf-8"
+            ) as f:
+
+                return json.load(f)
+
+        except:
+
+            return []
+
+
+    # ======================================================
+    # SİPARİŞ KAYDET
+    # ======================================================
+
+    def save_orders(self):
+
+        with open(
+            ORDERS_FILE,
+            "w",
+            encoding="utf-8"
+        ) as f:
+
+            json.dump(
+                self.orders,
+                f,
+                ensure_ascii=False,
+                indent=4
+            )
+
+
+    # ======================================================
+    # PARA
+    # ======================================================
+
+    def price(self, value):
+
+        return f"{value:.2f} TL"
+
+
+    # ======================================================
+    # HEADER
+    # ======================================================
+
+    def header(self):
+
+        bar = BoxLayout(
+            size_hint_y=None,
+            height=dp(75),
+            padding=dp(10),
+            spacing=dp(10)
+        )
+
+        menu = Button(
+            text="☰",
+            font_size=dp(26),
+            size_hint_x=None,
+            width=dp(55),
+            background_normal="",
+            background_color=BLACK,
+            color=WHITE
+        )
+
+        menu.bind(
+            on_press=self.menu
+        )
+
+        logo = Label(
+            text="[b]MEAA[/b]\n"
+                 "[color=ffad00]DIGITAL BASKI[/color]",
+            markup=True,
+            font_size=dp(18),
+            color=BLACK,
+            halign="center"
+        )
+
+        cart = Button(
+            text=f"🛒 {len(self.cart)}",
+            size_hint_x=None,
+            width=dp(80),
+            background_normal="",
+            background_color=YELLOW,
+            color=BLACK
+        )
+
+        cart.bind(
+            on_press=self.cart_page
+        )
+
+        bar.add_widget(menu)
+        bar.add_widget(logo)
+        bar.add_widget(cart)
+
+        return bar
+
+
+    # ======================================================
+    # ANA SAYFA
+    # ======================================================
+
+    def home(self, *args):
+
+        self.root.clear_widgets()
+
+        self.root.add_widget(
+            self.header()
+        )
+
+        scroll = ScrollView()
+
+        content = BoxLayout(
+            orientation="vertical",
+            padding=dp(15),
+            spacing=dp(15),
+            size_hint_y=None
+        )
+
+        content.bind(
+            minimum_height=content.setter(
+                "height"
+            )
+        )
+
+
+        # --------------------------------------------------
+        # REKLAM / HERO
+        # --------------------------------------------------
+
+        hero = BoxLayout(
+            orientation="vertical",
+            padding=dp(20),
+            spacing=dp(10),
+            size_hint_y=None,
+            height=dp(220)
+        )
+
+        with hero.canvas.before:
+
+            Color(*BLACK)
+
+            bg = RoundedRectangle(
+                pos=hero.pos,
+                size=hero.size,
+                radius=[20]
+            )
+
+        hero.bind(
+            pos=lambda obj, value:
+            setattr(bg, "pos", value)
+        )
+
+        hero.bind(
+            size=lambda obj, value:
+            setattr(bg, "size", value)
+        )
+
+        hero.add_widget(
+            Label(
+                text="[b]3D BASKI[/b]\n"
+                     "[color=ffad00]ANAHTARLIKLAR[/color]",
+                markup=True,
+                font_size=dp(27),
+                color=WHITE
+            )
+        )
+
+        hero.add_widget(
+            Label(
+                text="Kendine özel tasarımını oluştur!",
+                font_size=dp(17),
+                color=WHITE
+            )
+        )
+
+        custom_button = Button(
+            text="✏️ KİŞİSELLEŞTİR",
+            size_hint_y=None,
+            height=dp(50),
+            background_normal="",
+            background_color=YELLOW,
+            color=BLACK,
+            bold=True
+        )
+
+        custom_button.bind(
+            on_press=self.customize
+        )
+
+        hero.add_widget(
+            custom_button
+        )
+
+        content.add_widget(hero)
+
+
+        # --------------------------------------------------
+        # ARAMA
+        # --------------------------------------------------
+
+        self.search = TextInput(
+            hint_text="🔍 Ürün ara...",
+            multiline=False,
+            size_hint_y=None,
+            height=dp(50)
+        )
+
+        self.search.bind(
+            text=self.search_change
+        )
+
+        content.add_widget(
+            self.search
+        )
+
+
+        # --------------------------------------------------
+        # KATEGORİLER
+        # --------------------------------------------------
+
+        categories = ["Tümü"]
+
+        for product in self.products:
+
+            cat = product["category"]
+
+            if cat not in categories:
+
+                categories.append(cat)
+
+
+        category_scroll = ScrollView(
+            size_hint_y=None,
+            height=dp(50),
+            do_scroll_y=False
+        )
+
+        category_box = BoxLayout(
+            spacing=dp(5),
+            size_hint_x=None
+        )
+
+        category_box.bind(
+            minimum_width=
+            category_box.setter(
+                "width"
+            )
+        )
+
+        for cat in categories:
+
+            button = Button(
+                text=cat,
+                size_hint_x=None,
+                width=dp(120),
+                background_normal="",
+                background_color=YELLOW,
+                color=BLACK
+            )
+
+            button.bind(
+                on_press=
+                lambda instance,
+                c=cat:
+                self.select_category(c)
+            )
+
+            category_box.add_widget(
+                button
+            )
+
+        category_scroll.add_widget(
+            category_box
+        )
+
+        content.add_widget(
+            category_scroll
+        )
+
+
+        # --------------------------------------------------
+        # ÜRÜNLER
+        # --------------------------------------------------
+
+        self.product_grid = GridLayout(
+            cols=2,
+            spacing=dp(12),
+            size_hint_y=None
+        )
+
+        self.product_grid.bind(
+            minimum_height=
+            self.product_grid.setter(
+                "height"
+            )
+        )
+
+        content.add_widget(
+            self.product_grid
+        )
+
+        scroll.add_widget(
+            content
+        )
+
+        self.root.add_widget(
+            scroll
+        )
+
+        self.show_products()
+
+        self.bottom_menu()
+
+
+    # ======================================================
+    # ÜRÜNLERİ GÖSTER
+    # ======================================================
+
+    def show_products(
+        self,
+        search=""
+    ):
+
+        self.product_grid.clear_widgets()
+
+        for product in self.products:
+
+            if self.category != "Tümü":
+
+                if product["category"] != \
+                   self.category:
+
+                    continue
+
+
+            if search:
+
+                if search.lower() not in \
+                   product["name"].lower():
+
+                    continue
+
+
+            card = BoxLayout(
+                orientation="vertical",
+                padding=dp(8),
+                spacing=dp(5),
+                size_hint_y=None,
+                height=dp(300)
+            )
+
+
+            # FOTOĞRAF
+
+            if os.path.exists(
+                product["image"]
+            ):
+
+                card.add_widget(
+                    Image(
+                        source=
+                        product["image"],
+                        size_hint_y=None,
+                        height=dp(130)
+                    )
+                )
+
+            else:
+
+                card.add_widget(
+                    Label(
+                        text="🗝️",
+                        font_size=dp(60),
+                        size_hint_y=None,
+                        height=dp(130)
+                    )
+                )
+
+
+            # İSİM
+
+            card.add_widget(
+                Label(
+                    text=product["name"],
+                    color=BLACK,
+                    bold=True
+                )
+            )
+
+
+            # FİYAT
+
+            card.add_widget(
+                Label(
+                    text=
+                    self.price(
+                        product["price"]
+                    ),
+                    color=BLACK,
+                    font_size=dp(17)
+                )
+            )
+
+
+            # İNCELE
+
+            detail = Button(
+                text="ÜRÜNÜ İNCELE",
+                size_hint_y=None,
+                height=dp(42),
+                background_normal="",
+                background_color=YELLOW,
+                color=BLACK
+            )
+
+            detail.bind(
+                on_press=
+                lambda instance,
+                p=product:
+                self.product_detail(p)
+            )
+
+            card.add_widget(
+                detail
+            )
+
+
+            self.product_grid.add_widget(
+                card
+            )
+
+
+    # ======================================================
+    # ARAMA
+    # ======================================================
+
+    def search_change(
+        self,
+        instance,
+        text
+    ):
+
+        self.show_products(
+            text
+        )
+
+
+    # ======================================================
+    # KATEGORİ
+    # ======================================================
+
+    def select_category(
+        self,
+        category
+    ):
+
+        self.category = category
+
+        self.show_products(
+            self.search.text
+        )
+
+
+    # ======================================================
+    # ÜRÜN DETAY
+    # ======================================================
+
+    def product_detail(
+        self,
+        product
+    ):
+
+        layout = BoxLayout(
+            orientation="vertical",
+            padding=dp(15),
+            spacing=dp(10)
+        )
+
+
+        if os.path.exists(
+            product["image"]
+        ):
+
+            layout.add_widget(
+                Image(
+                    source=
+                    product["image"],
+                    size_hint_y=None,
+                    height=dp(180)
+                )
+            )
+
+
+        layout.add_widget(
+            Label(
+                text=
+                product["name"],
+                font_size=dp(22),
+                bold=True,
+                color=BLACK
+            )
+        )
+
+
+        layout.add_widget(
+            Label(
+                text=
+                product["description"],
+                color=GRAY
+            )
+        )
+
+
+        layout.add_widget(
+            Label(
+                text=
+                self.price(
+                    product["price"]
+                ),
+                font_size=dp(21),
+                bold=True,
+                color=BLACK
+            )
+        )
+
+
+        if product["customizable"]:
+
+            customize = Button(
+                text="✏️ KİŞİSELLEŞTİR",
+                size_hint_y=None,
+                height=dp(50),
+                background_normal="",
+                background_color=BLUE,
+                color=WHITE
+            )
+
+            customize.bind(
+                on_press=
+                lambda instance:
+                self.custom_product(
+                    product
+                )
+            )
+
+            layout.add_widget(
+                customize
+            )
+
+
+        add = Button(
+            text="🛒 SEPETE EKLE",
+            size_hint_y=None,
+            height=dp(50),
+            background_normal="",
+            background_color=GREEN,
+            color=WHITE
+        )
+
+        add.bind(
+            on_press=
+            lambda instance:
+            self.add_cart(product)
+        )
+
+        layout.add_widget(
+            add
+        )
+
+
+        Popup(
+            title="Ürün Detayı",
+            content=layout,
+            size_hint=(0.9, 0.8)
+        ).open()
+
+
+    # ======================================================
+    # KİŞİSELLEŞTİR
+    # ======================================================
+
+    def custom_product(
+        self,
+        product
+    ):
+
+        layout = BoxLayout(
+            orientation="vertical",
+            padding=dp(15),
+            spacing=dp(10)
+        )
+
+        name = TextInput(
+            hint_text="İsim veya yazı",
+            multiline=False
+        )
+
+        color = Spinner(
+            text="Siyah",
+            values=[
+                "Siyah",
+                "Beyaz",
+                "Sarı",
+                "Kırmızı",
+                "Mavi",
+                "Yeşil"
+            ]
+        )
+
+        quantity = Spinner(
+            text="1",
+            values=[
+                "1",
+                "2",
+                "3",
+                "4",
+                "5"
+            ]
+        )
+
+        add = Button(
+            text="SEPETE EKLE",
+            size_hint_y=None,
+            height=dp(50),
+            background_normal="",
+            background_color=YELLOW,
+            color=BLACK
+        )
+
+
+        def add_custom(
+            instance
+        ):
+
+            item = product.copy()
+
+            item["custom_name"] = \
+                name.text
+
+            item["color"] = \
+                color.text
+
+            item["quantity"] = \
+                int(quantity.text)
+
+            self.cart.append(
+                item
+            )
+
+            self.home()
+
+
+        add.bind(
+            on_press=add_custom
+        )
+
+        layout.add_widget(
+            Label(
+                text=
+                product["name"],
+                color=BLACK
+            )
+        )
+
+        layout.add_widget(
+            name
+        )
+
+        layout.add_widget(
+            color
+        )
+
+        layout.add_widget(
+            quantity
+        )
+
+        layout.add_widget(
+            add
+        )
+
+
+        Popup(
+            title="Kişiselleştir",
+            content=layout,
+            size_hint=(0.9, 0.7)
+        ).open()
+
+
+    # ======================================================
+    # SEPETE EKLE
+    # ======================================================
+
+    def add_cart(
+        self,
+        product
+    ):
+
+        item = product.copy()
+
+        item["quantity"] = 1
+
+        self.cart.append(
+            item
+        )
+
+        self.home()
+
+
+    # ======================================================
+    # SEPET TOPLAMI
+    # ======================================================
+
+    def total(self):
+
+        total = 0
+
+        for item in self.cart:
+
+            total += (
+                item["price"]
+                *
+                item.get(
+                    "quantity",
+                    1
+                )
+            )
+
+        return total
+
+
+    # ======================================================
+    # SEPET
+    # ======================================================
+
+    def cart_page(
+        self,
+        *args
+    ):
+
+        layout = BoxLayout(
+            orientation="vertical",
+            padding=dp(15),
+            spacing=dp(10)
+        )
+
+
+        if not self.cart:
+
+            layout.add_widget(
+                Label(
+                    text=
+                    "Sepetiniz boş.",
+                    color=BLACK
+                )
+            )
+
+        else:
+
+            scroll = ScrollView()
+
+            items = BoxLayout(
+                orientation="vertical",
+                size_hint_y=None,
+                spacing=dp(10)
+            )
+
+            items.bind(
+                minimum_height=
+                items.setter(
+                    "height"
+                )
+            )
+
+
+            for index, item in \
+                enumerate(
+                    self.cart
+                ):
+
+                quantity = item.get(
+                    "quantity",
+                    1
+                )
+
+                text = (
+                    f'{item["name"]}\n'
+                    f'Adet: {quantity}\n'
+                )
+
+                if item.get(
+                    "custom_name"
+                ):
+
+                    text += (
+                        "İsim: "
+                        +
+                        item["custom_name"]
+                        +
+                        "\n"
+                    )
+
+                if item.get(
+                    "color"
+                ):
+
+                    text += (
+                        "Renk: "
+                        +
+                        item["color"]
+                    )
+
+
+                items.add_widget(
+                    Label(
+                        text=text,
+                        color=BLACK,
+                        size_hint_y=None,
+                        height=dp(80)
+                    )
+                )
+
+
+                remove = Button(
+                    text="❌ Ürünü Kaldır",
+                    size_hint_y=None,
+                    height=dp(40),
+                    background_normal="",
+                    background_color=RED,
+                    color=WHITE
+                )
+
+                remove.bind(
+                    on_press=
+                    lambda instance,
+                    i=index:
+                    self.remove_cart(i)
+                )
+
+                items.add_widget(
+                    remove
+                )
+
+
+            scroll.add_widget(
+                items
+            )
+
+            layout.add_widget(
+                scroll
+            )
+
+
+            layout.add_widget(
+                Label(
+                    text=
+                    "TOPLAM: "
+                    +
+                    self.price(
+                        self.total()
+                    ),
+                    font_size=dp(21),
+                    bold=True,
+                    color=BLACK,
+                    size_hint_y=None,
+                    height=dp(45)
+                )
+            )
+
+
+            order = Button(
+                text="SİPARİŞ VER",
+                size_hint_y=None,
+                height=dp(50),
+                background_normal="",
+                background_color=GREEN,
+                color=WHITE
+            )
+
+            order.bind(
+                on_press=
+                self.order_form
+            )
+
+            layout.add_widget(
+                order
+            )
+
+
+        Popup(
+            title="🛒 Sepetim",
+            content=layout,
+            size_hint=(0.9, 0.85)
+        ).open()
+
+
+    # ======================================================
+    # SEPETTEN SİL
+    # ======================================================
+
+    def remove_cart(
+        self,
+        index
+    ):
+
+        self.cart.pop(
+            index
+        )
+
+        self.home()
+
+
+    # ======================================================
+    # SİPARİŞ FORMU
+    # ======================================================
+
+    def order_form(
+        self,
+        *args
+    ):
+
+        layout = BoxLayout(
+            orientation="vertical",
+            padding=dp(15),
+            spacing=dp(10)
+        )
+
+        name = TextInput(
+            hint_text="Ad Soyad",
+            multiline=False
+        )
+
+        phone = TextInput(
+            hint_text="Telefon",
+            multiline=False
+        )
+
+        address = TextInput(
+            hint_text="Teslimat Adresi",
+            multiline=True
+        )
+
+        send = Button(
+            text="SİPARİŞİ TAMAMLA",
+            size_hint_y=None,
+            height=dp(50),
+            background_normal="",
+            background_color=GREEN,
+            color=WHITE
+        )
+
+
+        def complete(
+            instance
+        ):
+
+            if not name.text or \
+               not phone.text or \
+               not address.text:
+
+                self.message(
+                    "Lütfen tüm bilgileri doldurun."
+                )
+
+                return
+
+
+            order_number = (
+                "MEAA-"
+                +
+                datetime.now().strftime(
+                    "%Y%m%d%H%M%S"
+                )
+            )
+
+
+            order = {
+
+                "number":
+                order_number,
+
+                "date":
+                datetime.now().strftime(
+                    "%d.%m.%Y %H:%M"
+                ),
+
+                "name":
+                name.text,
+
+                "phone":
+                phone.text,
+
+                "address":
+                address.text,
+
+                "total":
+                self.total(),
+
+                "status":
+                "Sipariş alındı",
+
+                "products":
+                self.cart.copy()
+
+            }
+
+
+            self.orders.append(
+                order
+            )
+
+            self.save_orders()
+
+            self.cart.clear()
+
+
+            self.message(
+                "Siparişiniz oluşturuldu!\n\n"
+                "Sipariş No:\n"
+                +
+                order_number
+            )
+
+
+        send.bind(
+            on_press=complete
+        )
+
+        layout.add_widget(
+            name
+        )
+
+        layout.add_widget(
+            phone
+        )
+
+        layout.add_widget(
+            address
+        )
+
+        layout.add_widget(
+            send
+        )
+
+
+        Popup(
+            title="Sipariş Bilgileri",
+            content=layout,
+            size_hint=(0.9, 0.8)
+        ).open()
+
+
+    # ======================================================
+    # KİŞİSELLEŞTİRME
+    # ======================================================
+
+    def customize(
+        self,
+        *args
+    ):
+
+        self.message(
+            "Kişiselleştirilebilir bir ürün seçin.\n\n"
+            "Ürün detayından isim ve renk "
+            "seçebilirsiniz."
+        )
+
+
+    # ======================================================
+    # SİPARİŞLER
+    # ======================================================
+
+    def orders_page(
+        self,
+        *args
+    ):
+
+        if not self.orders:
+
+            self.message(
+                "Henüz siparişiniz bulunmuyor."
+            )
+
+            return
+
+
+        text = ""
+
+        for order in reversed(
+            self.orders
+        ):
+
+            text += (
+                "📦 "
+                +
+                order["number"]
+                +
+                "\n"
+                +
+                order["date"]
+                +
+                "\n"
+                +
+                order["status"]
+                +
+                "\n"
+                +
+                self.price(
+                    order["total"]
+                )
+                +
+                "\n\n"
+            )
+
+
+        self.message(
+            text
+        )
+
+
+    # ======================================================
+    # WHATSAPP
+    # ======================================================
+
+    def whatsapp(
+        self,
+        *args
+    ):
+
+        webbrowser.open(
+            "https://wa.me/"
+            +
+            WHATSAPP_NUMBER
+        )
+
+
+    # ======================================================
+    # MENÜ
+    # ======================================================
+
+    def menu(
+        self,
+        *args
+    ):
+
+        layout = BoxLayout(
+            orientation="vertical",
+            padding=dp(15),
+            spacing=dp(10)
+        )
+
+
+        buttons = [
+
+            (
+                "🏠 Ana Sayfa",
+                self.home
+            ),
+
+            (
+                "🛍️ Ürünler",
+                self.home
+            ),
+
+            (
+                "🛒 Sepet",
+                self.cart_page
+            ),
+
+            (
+                "📦 Siparişlerim",
+                self.orders_page
+            ),
+
+            (
+                "📱 WhatsApp",
+                self.whatsapp
+            )
+
+        ]
+
+
+        for text, function in buttons:
+
+            button = Button(
+                text=text,
+                size_hint_y=None,
+                height=dp(50),
+                background_normal="",
+                background_color=YELLOW,
+                color=BLACK
+            )
+
+            button.bind(
+                on_press=
+                lambda instance,
+                f=function:
+                f()
+            )
+
+            layout.add_widget(
+                button
+            )
+
+
+        Popup(
+            title=APP_NAME,
+            content=layout,
+            size_hint=(0.85, 0.75)
+        ).open()
+
+
+    # ======================================================
+    # ALT MENÜ
+    # ======================================================
+
+    def bottom_menu(
+        self
+    ):
+
+        nav = BoxLayout(
+            size_hint_y=None,
+            height=dp(65)
+        )
+
+
+        buttons = [
+
+            (
+                "🏠\nAna Sayfa",
+                self.home
+            ),
+
+            (
+                "🛍️\nÜrünler",
+                self.home
+            ),
+
+            (
+                "🛒\nSepet",
+                self.cart_page
+            ),
+
+            (
+                "📦\nSipariş",
+                self.orders_page
+            ),
+
+            (
+                "📞\nWhatsApp",
+                self.whatsapp
+            )
+
+        ]
+
+
+        for text, function in buttons:
+
+            button = Button(
+                text=text,
+                font_size=dp(11),
+                background_normal="",
+                background_color=WHITE,
+                color=BLACK
+            )
+
+            button.bind(
+                on_press=
+                lambda instance,
+                f=function:
+                f()
+            )
+
+            nav.add_widget(
+                button
+            )
+
+
+        self.root.add_widget(
+            nav
+        )
+
+
+    # ======================================================
+    # MESAJ
+    # ======================================================
+
+    def message(
+        self,
+        text
+    ):
+
+        Popup(
+            title=APP_NAME,
+            content=Label(
+                text=text,
+                color=BLACK,
+                halign="center"
+            ),
+            size_hint=(0.85, 0.5)
+        ).open()
+
+
+# ==========================================================
+# UYGULAMAYI ÇALIŞTIR
+# ==========================================================
+
+if __name__ == "__main__":
+
+    MeaaDigitalBaski().run()
